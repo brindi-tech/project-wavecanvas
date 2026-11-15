@@ -13,6 +13,24 @@ class ParticleVisualization extends AudioVisualization {
         // Configurações
         this.particleCount = 150;
         this.maxConnections = 85;
+        this.connectionDistance = 85;
+        this.particleSize = 1;
+        this.properties = {
+            connectionDistance: {
+                label: 'Distância das ligações',
+                value: this.connectionDistance,
+                min: 40,
+                max: 180,
+                step: 5
+            },
+            particleSize: {
+                label: 'Tamanho das partículas',
+                value: this.particleSize,
+                min: 0.5,
+                max: 2,
+                step: 0.1
+            }
+        };
 
         // Centro da nuvem
         this.updateLayout();
@@ -210,10 +228,7 @@ class ParticleVisualization extends AudioVisualization {
             (high - this.highEnergy) * 0.25;
 
         // Volume geral
-        this.audioLevel =
-            this.audioProcessor
-                ? this.audioProcessor.calculateAudioLevel()
-                : 0.5;
+        this.audioLevel = this.audioProcessor ? this.audioProcessor.audioLevel : 0;
 
         // Pulso dos graves
         this.pulse +=
@@ -319,10 +334,10 @@ class ParticleVisualization extends AudioVisualization {
 
             // Atualizar tamanho
             particle.radius =
-                particle.baseRadius +
+                (particle.baseRadius +
                 this.bassEnergy * 4 +
                 this.highEnergy * 2 +
-                this.beatPulse * 3;
+                this.beatPulse * 3) * this.particleSize;
         }
 
         this.updateFloatingParticles();
@@ -361,9 +376,9 @@ class ParticleVisualization extends AudioVisualization {
             }
 
             particle.radius =
-                particle.baseRadius +
+                (particle.baseRadius +
                 this.bassEnergy * 4 +
-                this.highEnergy * 2;
+                this.highEnergy * 2) * this.particleSize;
         }
     }
 
@@ -373,13 +388,14 @@ class ParticleVisualization extends AudioVisualization {
 
                 let dx = second.x - first.x;
                 let dy = second.y - first.y;
-                let distance = Math.sqrt(dx * dx + dy * dy);
                 const minimumDistance = first.radius + second.radius;
+                const distanceSquared = dx * dx + dy * dy;
 
-                if (distance >= minimumDistance) {
+                if (distanceSquared >= minimumDistance * minimumDistance) {
                     continue;
                 }
 
+                let distance = Math.sqrt(distanceSquared);
                 if (distance === 0) {
                     dx = Math.random() - 0.5;
                     dy = Math.random() - 0.5;
@@ -446,13 +462,21 @@ class ParticleVisualization extends AudioVisualization {
     drawConnections() {
 
         const maxDistance =
-            85 + this.bassEnergy * 45;
+            this.connectionDistance + this.bassEnergy * 45;
 
         this.drawParticleGroupConnections(this.circleParticles, maxDistance);
         this.drawParticleGroupConnections(this.floatingParticles, maxDistance);
     }
 
     drawParticleGroupConnections(particles, maxDistance) {
+        const opacityBucketCount = 8;
+        const maxDistanceSquared = maxDistance * maxDistance;
+        const maximumOpacity = 0.15 + this.audioLevel * 0.5;
+        const connectionsByOpacity = Array.from(
+            { length: opacityBucketCount },
+            () => []
+        );
+
         for (let i = 0; i < particles.length; i++) {
             for (let j = i + 1; j < particles.length; j++) {
 
@@ -461,38 +485,39 @@ class ParticleVisualization extends AudioVisualization {
 
                 const dx = first.x - second.x;
                 const dy = first.y - second.y;
+                const distanceSquared = dx * dx + dy * dy;
 
-                const distance = Math.sqrt(
-                    dx * dx + dy * dy
-                );
-
-                if (distance < maxDistance) {
-
-                    const opacity =
-                        (1 - distance / maxDistance) *
-                        (0.15 + this.audioLevel * 0.5);
-
-                    this.ctx.beginPath();
-
-                    this.ctx.moveTo(
-                        first.x,
-                        first.y
-                    );
-
-                    this.ctx.lineTo(
-                        second.x,
-                        second.y
-                    );
-
-                    this.ctx.strokeStyle =
-                        `rgba(100, 150, 255, ${opacity})`;
-
-                    this.ctx.lineWidth =
-                        0.5 + this.bassEnergy * 1.5;
-
-                    this.ctx.stroke();
+                if (distanceSquared >= maxDistanceSquared) {
+                    continue;
                 }
+
+                const distance = Math.sqrt(distanceSquared);
+                const opacity = (1 - distance / maxDistance) * maximumOpacity;
+                const bucket = Math.min(
+                    opacityBucketCount - 1,
+                    Math.floor((opacity / maximumOpacity) * opacityBucketCount)
+                );
+                connectionsByOpacity[bucket].push(
+                    first.x, first.y, second.x, second.y
+                );
             }
+        }
+
+        this.ctx.lineWidth = 0.5 + this.bassEnergy * 1.5;
+        for (let bucket = 0; bucket < opacityBucketCount; bucket++) {
+            const connections = connectionsByOpacity[bucket];
+            if (connections.length === 0) {
+                continue;
+            }
+
+            this.ctx.beginPath();
+            for (let index = 0; index < connections.length; index += 4) {
+                this.ctx.moveTo(connections[index], connections[index + 1]);
+                this.ctx.lineTo(connections[index + 2], connections[index + 3]);
+            }
+            const opacity = ((bucket + 0.5) / opacityBucketCount) * maximumOpacity;
+            this.ctx.strokeStyle = `rgba(100, 150, 255, ${opacity})`;
+            this.ctx.stroke();
         }
     }
 
@@ -501,13 +526,11 @@ class ParticleVisualization extends AudioVisualization {
     // ==========================================
 
     drawParticles() {
+        this.ctx.save();
+        this.ctx.shadowBlur = 8 + this.bassEnergy * 25 + this.highEnergy * 15;
 
         for (const particle of this.particles) {
-
-            this.ctx.save();
-
             this.ctx.beginPath();
-
             this.ctx.arc(
                 particle.x,
                 particle.y,
@@ -517,19 +540,12 @@ class ParticleVisualization extends AudioVisualization {
             );
 
             this.ctx.fillStyle = particle.color;
-
-            this.ctx.globalAlpha =
-                particle.alpha;
-
-            // Brilho dinâmico
-            this.ctx.shadowBlur = 8 + this.bassEnergy * 25 + this.highEnergy * 15;
-
+            this.ctx.globalAlpha = particle.alpha;
             this.ctx.shadowColor = particle.color;
-
             this.ctx.fill();
-
-            this.ctx.restore();
         }
+
+        this.ctx.restore();
     }
 
     // ==========================================

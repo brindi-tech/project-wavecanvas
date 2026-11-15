@@ -40,8 +40,11 @@ class AudioVisualization {
     }
 
     updateProperty(property, value) {
-        if (Object.prototype.hasOwnProperty.call(this.properties, property)) {
-            this.properties[property] = value;
+        const definition = this.properties[property];
+        if (definition && Number.isFinite(value)) {
+            const boundedValue = Math.max(definition.min, Math.min(definition.max, value));
+            definition.value = boundedValue;
+            this[property] = boundedValue;
         }
     }
 
@@ -77,6 +80,6 @@ class AudioVisualization {
     }
 
     hasActiveAudio() {
-        return Boolean(this.audioProcessor?.isPlaying);
+        return Boolean(this.audioProcessor?.isPlaying || this.audioProcessor?.isMicActive);
     }
 }

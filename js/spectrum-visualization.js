@@ -2,6 +2,16 @@ class SpectrumVisualization extends AudioVisualization {
     constructor(canvas, audioProcessor) {
         super(canvas, audioProcessor);
         this.name = 'Espectro de Frequências';
+        this.sensitivity = 1;
+        this.properties = {
+            sensitivity: {
+                label: 'Sensibilidade',
+                value: this.sensitivity,
+                min: 0.5,
+                max: 2,
+                step: 0.1
+            }
+        };
     }
 
     draw() {
@@ -19,7 +29,7 @@ class SpectrumVisualization extends AudioVisualization {
         const data = audioData;
         const barWidth = this.width / data.length;
         for (let i = 0; i < data.length; i++) {
-            const barHeight = (data[i] / 255) * this.height;
+            const barHeight = Math.min(1, (data[i] / 255) * this.sensitivity) * this.height;
             const x = i * barWidth;
             const y = this.height - barHeight;
 

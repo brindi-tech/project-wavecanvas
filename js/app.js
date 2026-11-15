@@ -52,9 +52,17 @@ class App {
 
     async stopAudio() {
         try {
-            await this.audioProcessor.stop();
+            await this.audioProcessor.stopAudio();
         } catch (error) {
-            this.uiManager.showError(`Não foi possível libertar os recursos de áudio: ${error.message}`);
+            this.uiManager.showError(`Não foi possível remover o áudio: ${error.message}`);
+        }
+    }
+
+    async stopMicrophone() {
+        try {
+            await this.audioProcessor.stopMicrophone();
+        } catch (error) {
+            this.uiManager.showError(`Não foi possível desligar o microfone: ${error.message}`);
         }
     }
 

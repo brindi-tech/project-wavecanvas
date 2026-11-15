@@ -4,11 +4,26 @@ class UIManager {
         this.visualizationEngine = app.visualizationEngine;
         this.audioProcessor = app.audioProcessor;
         this.lastAudioInfo = '';
+        this.audioPending = false;
+        this.audioState = {};
         this.setupEventListeners();
     }
 
     updatePropertiesPanel() {
-        console.log('Atualizando painel de propriedades...');
+        const container = document.getElementById('properties-container');
+        const properties = this.visualizationEngine.getVisualizationProperties();
+        container.replaceChildren();
+
+        for (const [property, definition] of Object.entries(properties)) {
+            container.appendChild(this.createPropertyControl(property, definition));
+        }
+
+        if (Object.keys(properties).length === 0) {
+            const message = document.createElement('p');
+            message.className = 'empty-properties';
+            message.textContent = 'Esta visualização não tem propriedades ajustáveis.';
+            container.appendChild(message);
+        }
     }
 
     updateAudioInfo(info, isError = false) {
@@ -33,17 +48,26 @@ class UIManager {
     }
 
     setButtonStates(state) {
+        this.audioState = state;
+        this.updateAudioButtons();
+    }
+
+    updateAudioButtons() {
         const startMicBtn = document.getElementById('startMic');
+        const stopMicBtn = document.getElementById('stopMic');
         const toggleAudioBtn = document.getElementById('toggleAudio');
         const stopAudioBtn = document.getElementById('stopAudio');
-        startMicBtn.disabled = state.isPlaying;
+        const state = this.audioState;
+        startMicBtn.disabled = this.audioPending || state.isMicActive;
+        stopMicBtn.disabled = !state.isMicActive;
         toggleAudioBtn.disabled = !state.canResumeAudio;
         toggleAudioBtn.textContent = state.isPaused ? 'Reproduzir Áudio' : 'Pausar Áudio';
-        stopAudioBtn.disabled = !state.isPlaying && !state.canResumeAudio;
+        stopAudioBtn.disabled = !state.canResumeAudio;
     }
 
     setAudioPending(pending) {
-        document.getElementById('startMic').disabled = pending || this.audioProcessor.isPlaying;
+        this.audioPending = pending;
+        this.updateAudioButtons();
         document.getElementById('audioFile').disabled = pending;
     }
 
@@ -67,6 +91,10 @@ class UIManager {
     setupEventListeners() {
         document.getElementById('startMic').addEventListener('click', () => {
             this.app.startMicrophone();
+        });
+
+        document.getElementById('stopMic').addEventListener('click', () => {
+            this.app.stopMicrophone();
         });
 
         document.getElementById('stopAudio').addEventListener('click', () => {
@@ -101,22 +129,30 @@ class UIManager {
         // Implementado na etapa do sistema de áudio.
     }
 
-    createPropertyControl(property, value, min, max, step) {
+    createPropertyControl(property, definition) {
         const container = document.createElement('div');
         container.className = 'property-control';
         const label = document.createElement('label');
-        label.textContent = property;
         label.htmlFor = `prop-${property}`;
+        label.textContent = definition.label;
+
+        const valueDisplay = document.createElement('output');
+        valueDisplay.className = 'property-value';
+        valueDisplay.htmlFor = `prop-${property}`;
+        valueDisplay.textContent = definition.value;
+        label.appendChild(valueDisplay);
 
         const input = document.createElement('input');
         input.type = 'range';
         input.id = `prop-${property}`;
-        input.min = min;
-        input.max = max;
-        input.step = step;
-        input.value = value;
+        input.min = definition.min;
+        input.max = definition.max;
+        input.step = definition.step;
+        input.value = definition.value;
         input.addEventListener('input', (event) => {
-            this.visualizationEngine.updateVisualizationProperty(property, parseFloat(event.target.value));
+            const value = Number.parseFloat(event.target.value);
+            valueDisplay.textContent = value;
+            this.visualizationEngine.updateVisualizationProperty(property, value);
         });
 
         container.appendChild(label);

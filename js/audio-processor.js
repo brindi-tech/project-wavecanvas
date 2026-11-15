@@ -2,15 +2,17 @@ class AudioProcessor {
     constructor() {
         this.audioContext = null;
         this.analyser = null;
-        this.sourceNode = null;
+        this.microphoneSourceNode = null;
+        this.audioSourceNode = null;
         this.mediaStream = null;
         this.audioElement = null;
         this.objectUrl = null;
-        this.outputConnected = false;
         this.frequencyData = new Uint8Array();
         this.waveformData = new Uint8Array();
         this.audioLevel = 0;
         this.isPlaying = false;
+        this.isMicActive = false;
+        this.audioEnded = false;
         this.audioFileName = null;
         this.status = 'Parado';
         this.onStateChange = () => {};
@@ -22,7 +24,10 @@ class AudioProcessor {
             throw new Error('Este navegador não permite acesso ao microfone. Abra a aplicação em HTTPS ou em localhost.');
         }
 
-        this.stopCurrentSource();
+        if (this.isMicActive) {
+            return;
+        }
+
         let stream;
         try {
             await this.ensureAudioGraph();
@@ -34,14 +39,14 @@ class AudioProcessor {
                 }
             });
             this.mediaStream = stream;
-            this.sourceNode = this.audioContext.createMediaStreamSource(stream);
-            this.sourceNode.connect(this.analyser);
-            this.isPlaying = true;
-            this.status = 'Microfone ativo';
+            this.microphoneSourceNode = this.audioContext.createMediaStreamSource(stream);
+            this.microphoneSourceNode.connect(this.analyser);
+            this.isMicActive = true;
+            this.updateStatus();
             this.notifyStateChange();
         } catch (error) {
             stream?.getTracks().forEach((track) => track.stop());
-            this.stopCurrentSource();
+            this.stopMicrophoneSource();
             throw error;
         }
     }
@@ -55,48 +60,52 @@ class AudioProcessor {
             throw new Error('O ficheiro selecionado não parece ser um áudio. Escolhe um ficheiro WAV ou outro formato de áudio suportado.');
         }
 
-        this.stopCurrentSource();
+        this.stopAudioSource();
+        this.updateStatus();
+        this.notifyStateChange();
         await this.ensureAudioGraph();
 
         this.objectUrl = URL.createObjectURL(file);
         this.audioFileName = file.name;
-        this.audioElement = new Audio();
-        this.audioElement.preload = 'auto';
-        this.audioElement.src = this.objectUrl;
-        this.audioElement.addEventListener('ended', () => {
-            this.stopCurrentSource();
-            this.status = 'Reprodução terminada';
-            this.notifyStateChange();
-        }, { once: true });
-        this.audioElement.addEventListener('error', () => {
-            if (!this.audioElement) {
+        const audioElement = new Audio();
+        this.audioElement = audioElement;
+        audioElement.preload = 'auto';
+        audioElement.src = this.objectUrl;
+        audioElement.addEventListener('ended', () => {
+            if (this.audioElement !== audioElement) {
                 return;
             }
 
-            this.stopCurrentSource();
             this.isPlaying = false;
-            this.status = 'Erro na reprodução';
+            this.audioEnded = true;
+            this.updateStatus('Reprodução terminada');
+            this.notifyStateChange();
+        }, { once: true });
+        audioElement.addEventListener('error', () => {
+            if (this.audioElement !== audioElement) {
+                return;
+            }
+
+            this.stopAudioSource();
+            this.updateStatus('Erro na reprodução');
             this.notifyStateChange();
             this.onError(new Error('Não foi possível descodificar ou reproduzir este ficheiro de áudio.'));
         }, { once: true });
 
         try {
-            this.sourceNode = this.audioContext.createMediaElementSource(this.audioElement);
-            this.sourceNode.connect(this.analyser);
-            if (!this.outputConnected) {
-                this.analyser.connect(this.audioContext.destination);
-                this.outputConnected = true;
-            }
+            this.audioSourceNode = this.audioContext.createMediaElementSource(audioElement);
+            this.audioSourceNode.connect(this.analyser);
+            this.audioSourceNode.connect(this.audioContext.destination);
             await this.audioContext.resume();
-            await this.audioElement.play();
+            await audioElement.play();
 
             this.isPlaying = true;
-            this.status = `A reproduzir: ${file.name}`;
+            this.audioEnded = false;
+            this.updateStatus();
             this.notifyStateChange();
         } catch (error) {
-            this.stopCurrentSource();
-            this.isPlaying = false;
-            this.status = 'Parado';
+            this.stopAudioSource();
+            this.updateStatus();
             this.notifyStateChange();
             throw error;
         }
@@ -107,17 +116,17 @@ class AudioProcessor {
             throw new Error('Não existe nenhum ficheiro de áudio para reproduzir.');
         }
 
-        if (this.isPlaying) {
+        if (!this.audioElement.paused) {
             this.audioElement.pause();
             this.isPlaying = false;
-            this.status = `Pausado: ${this.audioFileName}`;
         } else {
             await this.audioContext.resume();
             await this.audioElement.play();
             this.isPlaying = true;
-            this.status = `A reproduzir: ${this.audioFileName}`;
+            this.audioEnded = false;
         }
 
+        this.updateStatus();
         this.notifyStateChange();
     }
 
@@ -141,23 +150,26 @@ class AudioProcessor {
         }
     }
 
-    stopCurrentSource() {
-        if (this.sourceNode) {
-            this.sourceNode.disconnect();
-            this.sourceNode = null;
+    stopMicrophoneSource() {
+        if (this.microphoneSourceNode) {
+            this.microphoneSourceNode.disconnect();
+            this.microphoneSourceNode = null;
         }
 
         if (this.mediaStream) {
             this.mediaStream.getTracks().forEach((track) => track.stop());
             this.mediaStream = null;
         }
+        this.isMicActive = false;
+        this.audioLevel = 0;
+    }
 
+    stopAudioSource() {
+        if (this.audioSourceNode) {
+            this.audioSourceNode.disconnect();
+            this.audioSourceNode = null;
+        }
         if (this.audioElement) {
-            if (this.analyser && this.outputConnected) {
-                this.analyser.disconnect(this.audioContext.destination);
-                this.outputConnected = false;
-            }
-
             this.audioElement.pause();
             this.audioElement.removeAttribute('src');
             this.audioElement.load();
@@ -171,11 +183,24 @@ class AudioProcessor {
 
         this.audioFileName = null;
         this.isPlaying = false;
-        this.audioLevel = 0;
+        this.audioEnded = false;
+    }
+
+    async stopMicrophone() {
+        this.stopMicrophoneSource();
+        this.updateStatus();
+        this.notifyStateChange();
+    }
+
+    async stopAudio() {
+        this.stopAudioSource();
+        this.updateStatus();
+        this.notifyStateChange();
     }
 
     async stop() {
-        this.stopCurrentSource();
+        this.stopMicrophoneSource();
+        this.stopAudioSource();
         this.status = 'Parado';
 
         if (this.analyser) {
@@ -194,7 +219,7 @@ class AudioProcessor {
     }
 
     update() {
-        if (!this.analyser || !this.isPlaying) {
+        if (!this.analyser || (!this.isPlaying && !this.isMicActive)) {
             this.audioLevel = 0;
             return;
         }
@@ -229,10 +254,26 @@ class AudioProcessor {
     notifyStateChange() {
         this.onStateChange({
             isPlaying: this.isPlaying,
+            isMicActive: this.isMicActive,
             canResumeAudio: Boolean(this.audioElement),
             isPaused: Boolean(this.audioElement) && !this.isPlaying,
             status: this.status,
             level: Math.round(this.audioLevel * 100)
         });
+    }
+
+    updateStatus(fallback = null) {
+        const parts = [];
+        if (this.isMicActive) {
+            parts.push('Microfone ativo');
+        }
+        if (this.isPlaying) {
+            parts.push(`A reproduzir: ${this.audioFileName}`);
+        } else if (this.audioElement && this.audioFileName) {
+            parts.push(this.audioEnded ? 'Reprodução terminada' : `Pausado: ${this.audioFileName}`);
+        } else if (fallback) {
+            parts.push(fallback);
+        }
+        this.status = parts.join(' + ') || 'Parado';
     }
 }
