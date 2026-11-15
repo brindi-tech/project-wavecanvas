@@ -12,9 +12,9 @@ body {
 }
 
 #app {
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 24px;
 }
 
 header {
@@ -29,9 +29,9 @@ h1 {
 
 main {
     display: grid;
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 280px minmax(0, 1fr);
     grid-template-rows: auto 1fr;
-    gap: 20px;
+    gap: 24px;
 }
 
 #controls {
@@ -118,7 +118,7 @@ select {
 
 #audioCanvas {
     width: 100%;
-    height: 300px;
+    height: clamp(360px, 52vh, 560px);
     background-color: #0f3460;
     border-radius: 4px;
 }
@@ -188,4 +188,386 @@ select {
 
 .hidden {
     display: none;
+}
+
+@media (max-width: 800px) {
+    #app {
+        padding: 16px;
+    }
+
+    main {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto;
+        gap: 16px;
+    }
+
+    #controls,
+    #visualization-area,
+    #properties-panel {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    #audioCanvas {
+        height: clamp(300px, 52vh, 460px);
+    }
+}
+
+:root {
+    color-scheme: dark;
+    --page: #080d18;
+    --surface: rgba(17, 26, 44, 0.88);
+    --surface-raised: #17243b;
+    --border: rgba(169, 190, 225, 0.13);
+    --text: #edf3ff;
+    --muted: #91a0b9;
+    --accent: #8d7cff;
+    --accent-bright: #66e4d0;
+    --radius: 18px;
+}
+
+body {
+    min-height: 100vh;
+    background:
+        radial-gradient(ellipse at 75% 4%, rgba(84, 74, 174, 0.2), transparent 34rem),
+        radial-gradient(ellipse at 4% 55%, rgba(34, 157, 151, 0.09), transparent 30rem),
+        var(--page);
+    color: var(--text);
+    font-family: Inter, "Segoe UI", Tahoma, sans-serif;
+    letter-spacing: 0.01em;
+}
+
+#app {
+    max-width: 1500px;
+    padding: clamp(20px, 4vw, 56px);
+}
+
+header {
+    margin-bottom: 32px;
+    text-align: left;
+}
+
+.eyebrow {
+    margin-bottom: 8px;
+    color: var(--accent-bright);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+}
+
+h1 {
+    width: fit-content;
+    background: linear-gradient(100deg, #f1f3ff 15%, #b4aaff 65%, #75e9d7);
+    background-clip: text;
+    color: transparent;
+    font-size: clamp(2.15rem, 5vw, 3.2rem);
+    letter-spacing: -0.055em;
+    line-height: 1.1;
+}
+
+.header-subtitle {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 1rem;
+}
+
+main {
+    grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+    gap: 20px;
+}
+
+#controls,
+#visualization-area,
+#properties-panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(18px);
+}
+
+#controls {
+    padding: 22px;
+}
+
+.control-group {
+    margin-bottom: 28px;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+.control-group h3,
+#properties-panel h3 {
+    margin-bottom: 14px;
+    border: 0;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.control-group h3 {
+    padding-bottom: 0;
+}
+
+.btn-primary,
+.btn-secondary {
+    width: 100%;
+    min-height: 44px;
+    margin: 0 0 9px;
+    padding: 11px 14px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 650;
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.btn-primary {
+    background: linear-gradient(115deg, #7565f4, #5c7bf1);
+    color: white;
+    box-shadow: 0 7px 18px rgba(101, 98, 231, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(115deg, #887aff, #6f8cff);
+    box-shadow: 0 9px 24px rgba(101, 98, 231, 0.32);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    border-color: var(--border);
+    background: rgba(255, 255, 255, 0.055);
+    color: #dce5f6;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    border-color: rgba(141, 124, 255, 0.45);
+    background: rgba(141, 124, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+    border-color: transparent;
+    background: rgba(255, 255, 255, 0.045);
+    color: #66748c;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+.close:focus-visible {
+    outline: 2px solid var(--accent-bright);
+    outline-offset: 3px;
+}
+
+input[type="file"],
+select {
+    width: 100%;
+    min-height: 46px;
+    margin-bottom: 10px;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: #101a2d;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.82rem;
+}
+
+input[type="file"]::file-selector-button {
+    margin-right: 10px;
+    padding: 6px 9px;
+    border: 0;
+    border-radius: 7px;
+    background: var(--surface-raised);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+}
+
+#controls .control-group:last-child {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 9px;
+}
+
+#controls .control-group:last-child h3 {
+    grid-column: 1 / -1;
+}
+
+#controls .control-group:last-child button {
+    margin-bottom: 0;
+    padding-inline: 8px;
+    font-size: 0.8rem;
+}
+
+#visualization-area {
+    min-width: 0;
+    padding: clamp(14px, 2vw, 22px);
+}
+
+#audioCanvas {
+    height: clamp(330px, 50vh, 570px);
+    border: 1px solid rgba(169, 190, 225, 0.08);
+    border-radius: 13px;
+    background:
+        radial-gradient(ellipse at center, rgba(47, 68, 111, 0.24), transparent 72%),
+        #0b1322;
+}
+
+#audioInfo {
+    gap: 12px;
+    margin-top: 14px;
+}
+
+#audioInfo p {
+    min-width: 0;
+    padding: 9px 12px;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.035);
+    color: #c5d0e4;
+    font-size: 0.82rem;
+}
+
+#properties-panel {
+    padding: 22px;
+}
+
+.property-control {
+    margin-bottom: 18px;
+}
+
+.property-control label {
+    margin-bottom: 8px;
+    color: #d5def0;
+    font-size: 0.87rem;
+}
+
+.property-control input {
+    accent-color: var(--accent);
+}
+
+.modal {
+    background: rgba(3, 7, 14, 0.76);
+    backdrop-filter: blur(8px);
+}
+
+.modal-content {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #121d31;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+}
+
+.modal-content h3 {
+    margin-bottom: 10px;
+    color: #ff9aaf;
+}
+
+.modal-content p {
+    color: #c3cee0;
+}
+
+.close {
+    color: var(--muted);
+}
+
+.close:hover {
+    color: var(--text);
+}
+
+@media (max-width: 800px) {
+    header {
+        margin-bottom: 24px;
+    }
+
+    #controls {
+        padding: 18px;
+    }
+
+    #audioCanvas {
+        height: clamp(280px, 48vh, 460px);
+    }
+}
+
+@media (max-width: 480px) {
+    #app {
+        padding: 22px 14px;
+    }
+
+    #audioInfo {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+.property-control label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.property-value {
+    min-width: 42px;
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--accent-bright);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.property-control input[type="range"] {
+    height: 6px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+}
+
+.property-control input[type="range"]::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    appearance: none;
+    border: 2px solid #dffdf8;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px rgba(141, 124, 255, 0.55);
+}
+
+.property-control input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #dffdf8;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px rgba(141, 124, 255, 0.55);
+}
+
+.empty-properties {
+    color: var(--muted);
+    font-size: 0.88rem;
 }
