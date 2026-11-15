@@ -9,7 +9,9 @@
 <body>
     <div id="app">
         <header>
+            <p class="eyebrow">Estúdio de áudio interativo</p>
             <h1>WaveCanvas Studio</h1>
+            <p class="header-subtitle">Dá forma ao som, em tempo real.</p>
         </header>
         
         <main>
@@ -17,8 +19,11 @@
                 <div class="control-group">
                     <h3>Controlos de Áudio</h3>
                     <button id="startMic" class="btn-primary">Iniciar Microfone</button>
-                    <button id="stopAudio" class="btn-secondary" disabled>Parar Áudio</button>
+                    <button id="stopMic" class="btn-secondary" disabled>Desativar Microfone</button>
                     <input type="file" id="audioFile" accept="audio/*,.wav">
+                    <button id="toggleAudio" class="btn-secondary" disabled>Pausar Áudio</button>
+                    <button id="stopAudio" class="btn-secondary" disabled>Remover Áudio</button>
+                    
                 </div>
                 
                 <div class="control-group">
@@ -62,6 +67,14 @@
         </div>
     </div>
     
-    <script src="app.js" defer></script>
+    <script src="js/audio-processor.js" defer></script>
+    <script src="js/audio-visualization.js" defer></script>
+    <script src="js/spectrum-visualization.js" defer></script>
+    <script src="js/waveform-visualization.js" defer></script>
+    <script src="js/particle-visualization.js" defer></script>
+    <script src="js/visualization-engine.js" defer></script>
+    <script src="js/ui-manager.js" defer></script>
+    <script src="js/export-manager.js" defer></script>
+    <script src="js/app.js" defer></script>
 </body>
 </html>
